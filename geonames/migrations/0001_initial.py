@@ -51,7 +51,7 @@ class Migration(SchemaMigration):
             ('topo', self.gf('django.db.models.fields.IntegerField')(db_index=True)),
             ('timezone', self.gf('django.db.models.fields.CharField')(max_length=30, blank=True)),
             ('moddate', self.gf('django.db.models.fields.DateField')()),
-            ('point', self.gf('django.contrib.gis.db.models.fields.PointField')(null=True, geography=True)),
+            ('point', self.gf('django.contrib.gis.db.models.fields.PointField')(null=True)),
         ))
         db.send_create_signal('geonames', ['Geoname'])
 
