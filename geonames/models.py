@@ -69,7 +69,7 @@ class Geoname(models.Model):
     topo = models.IntegerField(db_index=True)
     timezone = models.CharField(max_length=30, blank=True)
     moddate = models.DateField('Date of Last Modification')
-    point = models.PointField(null=True, geography=True, spatial_index=True)
+    point = models.PointField(null=True, spatial_index=True)
 
     objects = GeonameManager()
 
@@ -103,7 +103,7 @@ class Geoname(models.Model):
 #     language = models.CharField(max_length=20, db_index=True)
 #     name = models.CharField(max_length=255)
 #     value = models.TextField()
-# 
+#
 #     def __unicode__(self):
 #         return self.name
 
