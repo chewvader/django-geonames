@@ -2,7 +2,7 @@ from django.contrib.gis.db import models
 
 
 class Admin1Code(models.Model):
-    code = models.CharField(max_length=6)
+    code = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=58)
 
     objects = models.GeoManager()
