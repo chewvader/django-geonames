@@ -140,7 +140,7 @@ class Migration(SchemaMigration):
             'geonameid': ('django.db.models.fields.PositiveIntegerField', [], {'unique': 'True', 'primary_key': 'True'}),
             'moddate': ('django.db.models.fields.DateField', [], {}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'db_index': 'True'}),
-            'point': ('django.contrib.gis.db.models.fields.PointField', [], {'null': 'True', 'geography': 'True'}),
+            'point': ('django.contrib.gis.db.models.fields.PointField', [], {'null': 'True'}),
             'population': ('django.db.models.fields.BigIntegerField', [], {'db_index': 'True'}),
             'timezone': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
             'topo': ('django.db.models.fields.IntegerField', [], {'db_index': 'True'})
