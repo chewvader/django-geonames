@@ -71,6 +71,14 @@ class Geoname(models.Model):
     moddate = models.DateField('Date of Last Modification')
     point = models.PointField(null=True, spatial_index=True)
 
+    # Lower-cased
+    searchable_name = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
     objects = GeonameManager()
 
     def __unicode__(self):
@@ -94,6 +102,10 @@ class Geoname(models.Model):
                 return None
         else:
             return self
+
+    def save(self, *args, **kwargs):
+        self.searchable_name = self.name.lower()
+        return super(Geoname, self).save(*args, **kwargs)
 
     class Meta:
         ordering = ('name', 'country')
