@@ -5,6 +5,7 @@ from optparse import make_option
 from django.core.management import call_command
 from django.core.management.base import NoArgsCommand
 from django.conf import settings
+from django.db import router
 
 from compress_geonames import GEONAMES_DATA, GEONAMES_DATA_PC
 from geonames import models as m
@@ -16,11 +17,11 @@ PostalCode = m.PostalCode
 GEONAMES_SQL = os.path.abspath(
     os.path.join(os.path.dirname(m.__file__), 'sql'))
 
-def get_cmd_options():
+def get_cmd_options(model):
     "Obtains the command-line PostgreSQL connection options for shell commands."
     # The db_name parameter is optional
     options = ''
-    db_settings = settings.DATABASES['default']
+    db_settings = settings.DATABASES[router.db_for_write(model)]
     if db_settings['NAME']:
         options += '-d %s ' % db_settings['NAME']
     if db_settings['USER']:
@@ -32,7 +33,7 @@ def get_cmd_options():
     if db_settings['PASSWORD']:
         os.environ['PGPASSWORD'] = db_settings['PASSWORD']
         
-    return options
+    return options, {'db_opts': options,}
 
 
 class Command(NoArgsCommand):
@@ -55,12 +56,9 @@ class Command(NoArgsCommand):
         call_command('syncdb')
         db_table = Geoname._meta.db_table
 
-        db_opts = get_cmd_options()
+        db_opts, fromfile_args = get_cmd_options(Geoname)
 
         fromfile_cmd = 'psql %(db_opts)s -f %(sql_file)s'
-        fromfile_args = {
-            'db_opts': db_opts,
-        }
 
         ### COPY'ing into the Geonames table ###
 
@@ -92,11 +90,14 @@ class Command(NoArgsCommand):
         ### COPY'ing into the Geonames alternate table ###
 
         db_table = Alternate._meta.db_table
+
+        db_opts, fromfile_args = get_cmd_options(Alternate)
+
         copy_sql = "COPY %s (alternateid,geoname_id,isolanguage,variant,preferred,short) FROM STDIN;" % db_table
         copy_cmd = 'gunzip -c %(gz_file)s | psql %(db_opts)s -c "%(copy_sql)s"'
         copy_args = {
             'gz_file': os.path.join(GEONAMES_DATA, 'alternateNames.gz'),
-            'db_opts': get_cmd_options(),
+            'db_opts': db_opts,
             'copy_sql': copy_sql,
         }
 
@@ -130,11 +131,14 @@ class Command(NoArgsCommand):
 
         ### COPY'ing into the Geonames alternate table ###
         db_table = PostalCode._meta.db_table
+
+        db_opts, fromfile_args = get_cmd_options(PostalCode)
+
         copy_sql = "COPY %s (countrycode, postalcode, placename, admin1name, admin1code, admin2name, admin2code, admin3name, admin3code, latitude, longitude, accuracy) FROM STDIN;" % db_table
         copy_cmd = 'gunzip -c %(gz_file)s | psql %(db_opts)s -c "%(copy_sql)s"'
         copy_args = {
             'gz_file': os.path.join(GEONAMES_DATA_PC, 'allCountries.gz'),
-            'db_opts': get_cmd_options(),
+            'db_opts': db_opts,
             'copy_sql': copy_sql,
         }
 
