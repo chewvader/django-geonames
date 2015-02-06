@@ -1,4 +1,6 @@
 import datetime
+import decimal
+import io
 import gzip
 import os
 import sys
@@ -35,6 +37,9 @@ class Command(NoArgsCommand):
     clear_line = chr(27) + '[2K' + chr(27) +'[G'
 
     def allCountries(self, **options):
+
+        print("Processing allCountries.zip")
+
         zf = zipfile.ZipFile(os.path.join(GEONAMES_DATA, 'allCountries.zip'))
         gzf = gzip.GzipFile(os.path.join(GEONAMES_DATA, 'allCountries.gz'), 'w')
 
@@ -42,25 +47,37 @@ class Command(NoArgsCommand):
                      'fclass', 'fcode', 'country_code', 'cc2',
                      'admin1', 'admin2', 'admin3', 'admin4',
                      'population', 'elevation', 'topo', 'timezone', 'mod_date']
-        out_fields = [f for f in in_fields if not f in ('latitude', 'longitude', 'asciiname')]
+        out_fields = [f for f in in_fields if not f in ('latitude', 'longitude')]
         len_fields = ['name', 'asciiname', 'alternates', 'fclass', 'fcode', 'country_code',
                       'cc2', 'admin1', 'admin2', 'admin3', 'admin4', 'timezone']
         if options['lengths']:
             lengths = dict([(f, 0) for f in len_fields])
 
-        contents = zf.read('allCountries.txt').split('\n')
-        num_lines = len(contents)
-        for i, line in enumerate(contents):
+        unzipped = zf.read('allCountries.txt')
+        file_size = len(unzipped)
+
+        buf = io.BytesIO(unzipped)
+        size_counter = 0
+        display_percent = 0
+        while True:
+            line = buf.readline()
+            size_counter += len(line)
+            line = line.decode('utf8')
+
+            if line == '':
+                break
+
             if line:
-                row = dict(zip(in_fields, map(str.strip, line.split('\t'))))
+                row = dict(list(zip(in_fields, list(map(str.strip, line.split('\t'))))))
                 if options['lengths']:
                     for k in len_fields:
                         lengths[k] = max(len(row[k]), lengths[k])
 
                 # fixing trailing slash problem in geonames data
                 try:
-                    if row['name'][-1:] == "\\":
-                        row['name'] = row['name'][0:-1]
+                    for k in len_fields:
+                        while row[k][-1:] == "\\":
+                            row[k] = row[k][0:-1]
                 except:
                     pass
 
@@ -80,12 +97,14 @@ class Command(NoArgsCommand):
                 else:
                     new_line = '\t'.join([row[k] for k in out_fields])
                     new_line += '\t%s\n' % wkt
-                    gzf.write(new_line)
+                    gzf.write(bytes(new_line, 'UTF-8'))
 
-            if i % 10000 == 0:
-                sys.stdout.write(self.clear_line)
-                sys.stdout.write('Compressing allCountries.txt: %.2f%% (%d/%d)' %
-                                 ((100. * i) / num_lines, i, num_lines))
+            percent = str(decimal.Decimal((size_counter / file_size) * 100).quantize(decimal.Decimal('.01'), rounding=decimal.ROUND_UP))
+            if percent != display_percent:
+                display_percent = percent
+                progress = 'Processed %s %%' % (percent)
+                sys.stdout.write(progress)
+                sys.stdout.write('\b' * len(progress))
                 sys.stdout.flush()
 
         gzf.close()
@@ -97,37 +116,64 @@ class Command(NoArgsCommand):
                 sys.stdout.write('%s:\t%d\n' % (fld, lengths[fld]))
 
     def alternateNames(self, **options):
+
+        print("Processing alternateNames.zip")
+
         zf = zipfile.ZipFile(os.path.join(GEONAMES_DATA, 'alternateNames.zip'))
         gzf = gzip.GzipFile(os.path.join(GEONAMES_DATA, 'alternateNames.gz'), 'w')
 
-        in_fields = ['alternateid', 'geoname_id', 'isolanguage', 'variant', 'preferred', 'short']
-        bool_fields = ['preferred', 'short']
+        in_fields = ['alternateid', 'geonameid', 'isolanguage', 'variant', 'preferred', 'short', 'colloquial', 'historic']
+        bool_fields = ['preferred', 'short', 'colloquial', 'historic']
         len_fields = ['isolanguage', 'variant']
         out_fields = in_fields
         if options['lengths']:
             lengths = dict([(f, 0) for f in len_fields])
 
-        contents = zf.read('alternateNames.txt').split('\n')
-        num_lines = len(contents)
-        for i, line in enumerate(contents):
+        unzipped = zf.read('alternateNames.txt')
+        file_size = len(unzipped)
+
+        buf = io.BytesIO(unzipped)
+        size_counter = 0
+        display_percent = 0
+        while True:
+            line = buf.readline()
+            size_counter += len(line)
+            line = line.decode('utf8')
+
+            if line == '':
+                break
+
             if line:
-                row = dict(zip(in_fields, map(str.strip, line.split('\t'))))
+                row = dict(list(zip(in_fields, list(map(str.strip, line.split('\t'))))))
                 for bool_field in bool_fields:
                     if row[bool_field]:
                         row[bool_field] = '1'
                     else:
                         row[bool_field] = '0'
+
                 if options['lengths']:
                     for k in len_fields:
                         lengths[k] = max(len(row[k]), lengths[k])
+
+                # fixing trailing slash problem in geonames data
+                try:
+                    for k in len_fields:
+                        while row[k][-1:] == "\\":
+                            row[k] = row[k][0:-1]
+                except:
+                    pass
+
+
                 new_line = '\t'.join([row[k] for k in out_fields])
                 new_line += '\n'
-                gzf.write(new_line)
+                gzf.write(bytes(new_line, 'UTF-8'))
 
-                if i % 10000 == 0:
-                    sys.stdout.write(self.clear_line)
-                    sys.stdout.write('Compressing alternateNames.txt: %.2f%% (%d/%d)' %
-                                     ((100. * i) / num_lines, i, num_lines))
+                percent = str(decimal.Decimal((size_counter / file_size) * 100).quantize(decimal.Decimal('.01'), rounding=decimal.ROUND_UP))
+                if percent != display_percent:
+                    display_percent = percent
+                    progress = 'Processed %s %%' % (percent)
+                    sys.stdout.write(progress)
+                    sys.stdout.write('\b' * len(progress))
                     sys.stdout.flush()
 
         gzf.close()
@@ -139,6 +185,9 @@ class Command(NoArgsCommand):
                 sys.stdout.write('%s:\t%d\n' % (fld, lengths[fld]))
 
     def postalCodes(self, **options):
+
+        print("Processing Postal Codes allCountries.zip")
+
         zf = zipfile.ZipFile(os.path.join(GEONAMES_DATA_PC, 'allCountries.zip'))
         gzf = gzip.GzipFile(os.path.join(GEONAMES_DATA_PC, 'allCountries.gz'), 'w')
 
@@ -148,14 +197,33 @@ class Command(NoArgsCommand):
         if options['lengths']:
             lengths = dict([(f, 0) for f in len_fields])
 
-        contents = zf.read('allCountries.txt').split('\n')
-        num_lines = len(contents)
-        for i, line in enumerate(contents):
+        unzipped = zf.read('allCountries.txt')
+        file_size = len(unzipped)
+
+        buf = io.BytesIO(unzipped)
+        size_counter = 0
+        display_percent = 0
+        while True:
+            line = buf.readline()
+            size_counter += len(line)
+            line = line.decode('utf8')
+
+            if line == '':
+                break
+
             if line:
-                row = dict(zip(in_fields, map(str.strip, line.split('\t'))))
+                row = dict(list(zip(in_fields, list(map(str.strip, line.split('\t'))))))
                 if options['lengths']:
                     for k in len_fields:
                         lengths[k] = max(len(row[k]), lengths[k])
+
+                # fixing trailing slash problem in geonames data
+                try:
+                    for k in len_fields:
+                        while row[k][-1:] == "\\":
+                            row[k] = row[k][0:-1]
+                except:
+                    pass
 
                 if row['latitude'] == '' or row['longitude'] == '':
                     continue
@@ -165,12 +233,14 @@ class Command(NoArgsCommand):
 
                 new_line = '\t'.join([row[k] for k in out_fields])
                 new_line += '\n'
-                gzf.write(new_line)
+                gzf.write(bytes(new_line, 'UTF-8'))
 
-                if i % 10000 == 0:
-                    sys.stdout.write(self.clear_line)
-                    sys.stdout.write('Compressing allCountries.txt: %.2f%% (%d/%d)' %
-                                     ((100. * i) / num_lines, i, num_lines))
+                percent = str(decimal.Decimal((size_counter / file_size) * 100).quantize(decimal.Decimal('.01'), rounding=decimal.ROUND_UP))
+                if percent != display_percent:
+                    display_percent = percent
+                    progress = 'Processed %s %%' % (percent)
+                    sys.stdout.write(progress)
+                    sys.stdout.write('\b' * len(progress))
                     sys.stdout.flush()
 
         gzf.close()

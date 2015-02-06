@@ -7,8 +7,8 @@ class Admin1Code(models.Model):
 
     objects = models.GeoManager()
 
-    def __unicode__(self):
-        return u': '.join([unicode(self.code), unicode(self.name)])
+    def __str__(self):
+        return ': '.join([str(self.code), str(self.name)])
 
 
 class Admin2Code(models.Model):
@@ -17,8 +17,8 @@ class Admin2Code(models.Model):
 
     objects = models.GeoManager()
 
-    def __unicode__(self):
-        return u': '.join([unicode(self.code), unicode(self.name)])
+    def __str__(self):
+        return ': '.join([str(self.code), str(self.name)])
 
 
 class TimeZone(models.Model):
@@ -28,7 +28,7 @@ class TimeZone(models.Model):
 
     objects = models.GeoManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.tzid
 
 
@@ -55,11 +55,12 @@ class GeonameManager(models.GeoManager):
 class Geoname(models.Model):
     geonameid = models.PositiveIntegerField(primary_key=True, unique=True)
     name = models.CharField(max_length=200, db_index=True)
+    asciiname = models.CharField(max_length=200, db_index=True)
     alternates = models.TextField(blank=True)
     fclass = models.CharField(max_length=1, db_index=True)
     fcode = models.CharField(max_length=10, db_index=True)
     country = models.CharField(max_length=2, blank=True, db_index=True)
-    cc2 = models.CharField('Alternate Country Code', max_length=60, blank=True)
+    cc2 = models.CharField('Alternate Country Code', max_length=100, blank=True)
     admin1 = models.CharField(max_length=20, blank=True, db_index=True)
     admin2 = models.CharField(max_length=80, blank=True, db_index=True)
     admin3 = models.CharField(max_length=20, blank=True, db_index=True)
@@ -67,13 +68,13 @@ class Geoname(models.Model):
     population = models.BigIntegerField(db_index=True)
     elevation = models.IntegerField(db_index=True)
     topo = models.IntegerField(db_index=True)
-    timezone = models.CharField(max_length=30, blank=True)
+    timezone = models.CharField(max_length=40, blank=True)
     moddate = models.DateField('Date of Last Modification')
     point = models.PointField(null=True, geography=True, spatial_index=True)
 
     objects = GeonameManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def is_country(self):
@@ -113,27 +114,29 @@ class Alternate(models.Model):
     geoname = models.ForeignKey(Geoname, related_name='alternate_names')
     isolanguage = models.CharField(max_length=7)
     variant = models.CharField(max_length=200, db_index=True)
-    preferred = models.BooleanField(db_index=True)
-    short = models.BooleanField()
+    preferred = models.BooleanField(db_index=True, default=None)
+    short = models.BooleanField(default=None)
+    colloquial = models.BooleanField(default=None)
+    historic = models.BooleanField(default=None)
 
     objects = models.GeoManager()
 
     class Meta:
         ordering = ('-preferred',)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.geoname.name
 
 
 class PostalCode(models.Model):
     countrycode = models.CharField(max_length=2)
     postalcode = models.CharField(max_length=20)
-    placename = models.CharField(max_length=180)
-    admin1name = models.CharField(max_length=100)
+    placename = models.CharField(max_length=200)
+    admin1name = models.CharField(max_length=200)
     admin1code = models.CharField(max_length=20)
-    admin2name = models.CharField(max_length=100)
-    admin2code = models.CharField(max_length=20)
-    admin3name = models.CharField(max_length=100)
+    admin2name = models.CharField(max_length=200)
+    admin2code = models.CharField(max_length=80)
+    admin3name = models.CharField(max_length=200)
     admin3code = models.CharField(max_length=20)
     latitude = models.FloatField()
     longitude = models.FloatField()
@@ -141,5 +144,5 @@ class PostalCode(models.Model):
 
     objects = models.GeoManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.placename

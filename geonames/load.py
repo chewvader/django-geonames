@@ -20,10 +20,10 @@ def txt_lengths(txt_file):
             else:
                 lengths[i].append(n)
 
-    cols = lengths.keys()
+    cols = list(lengths.keys())
     cols.sort()
     for col in cols:
-        print '%d: %d' % (col, max(lengths[col]))
+        print('%d: %d' % (col, max(lengths[col])))
 
 
 def clean(sarr):
@@ -37,7 +37,7 @@ def run():
     fields = ('code', 'name')
     for line in fh:
         splits = line.split('\t')
-        kwargs = dict(zip(fields, clean(splits)))
+        kwargs = dict(list(zip(fields, clean(splits))))
         Admin1Code.objects.create(**kwargs)
 
     # Loading the Admin2Code models
@@ -45,7 +45,7 @@ def run():
     fields = ('code', 'name', 'ascii', 'geonameid')
     for line in fh:
         splits = line.split('\t')
-        kwargs = dict(zip(fields, clean(splits)))
+        kwargs = dict(list(zip(fields, clean(splits))))
         for key in ('ascii', 'geonameid'):
             kwargs.pop(key)
         Admin2Code.objects.create(**kwargs)
@@ -53,8 +53,8 @@ def run():
     # Loading the TimeZone models.
     fh = open(os.path.join(GEONAMES_DATA, 'timeZones.txt'))
     fields = ('tzid', 'gmt_offset', 'dst_offset')
-    header = fh.next()
+    header = next(fh)
     for line in fh:
         splits = line.split('\t')
-        kwargs = dict(zip(fields, clean(splits)))
+        kwargs = dict(list(zip(fields, clean(splits))))
         TimeZone.objects.create(**kwargs)

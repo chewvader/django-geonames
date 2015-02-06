@@ -2,9 +2,8 @@ import datetime
 import os
 import re
 import sys
-import urllib
-import urllib2
-import urlparse
+import cgi
+import urllib.request, urllib.error, urllib.parse, urllib.response
 from optparse import make_option
 
 from django.conf import settings
@@ -27,26 +26,31 @@ def download(url, filepath=False):
     """
     filepath = filepath or url.split('/')[-1]
 
-    web_file = urllib.urlopen(url)
+    web_file = urllib.request.urlopen(url)
 
-    dir = '/'.join(filepath.split('/')[:-1])
+    if os.name == "nt":
+        path_delimiter = '\\'
+    else:
+        path_delimiter = '/'
+
+    dir = path_delimiter.join(filepath.split(path_delimiter)[:-1])
     if not os.path.isdir(dir):
         os.makedirs(dir)
 
     # check size of files
-    web_file_size = web_file.info().getheaders("Content-Length")[0]
-    web_file_size = int(web_file_size)
+    web_file_info = web_file.info()
+    web_file_size = int(web_file_info.get("Content-Length"))
     if os.path.isfile(filepath):
         existing_file = open(filepath, "r")
-        existing_file_size = len(existing_file.read())
-        print existing_file_size, web_file_size
+        existing_file_size = os.path.getsize(filepath)#len(existing_file.read())
+        print(existing_file_size, web_file_size)
         if existing_file_size == web_file_size:
             existing_file.close()
             web_file.close()
-            print 'Skiping. File sizes match.'
+            print('Skipping. File sizes match.')
             return
 
-    local_file = open(filepath, 'w')
+    local_file = open(filepath, 'wb')
     readSize = 102400
     bytesRead = 0
     while True:
@@ -87,8 +91,11 @@ class Command(NoArgsCommand):
         if options['time']:
             start_time = datetime.datetime.now()
 
-        response = urllib2.urlopen(urllib2.Request(url=GEONAMES_DUMPS_URL))
-        files = re.findall(r'\<a href="(.+\.(?:txt|zip))"\>', response.read())
+        response = urllib.request.urlopen(urllib.request.Request(url=GEONAMES_DUMPS_URL))
+
+        _, params = cgi.parse_header(response.headers.get('Content-Type', ''))
+        text = response.read().decode(params['charset'])
+        files = re.findall(r'\<a href="(.+\.(?:txt|zip))"\>', text)
         for file in files:
 
             if options['country'] and file != '%s.zip' % options['country'] \
@@ -97,23 +104,26 @@ class Command(NoArgsCommand):
                 or not options['country'] and len(file) == 6:
                     continue
 
-            print '\nStart download "%s" file' % file
-            download(urlparse.urljoin(GEONAMES_DUMPS_URL, file),
+            print('\nStart download "%s" file' % file)
+            download(urllib.parse.urljoin(GEONAMES_DUMPS_URL, file),
                      os.path.join(GEONAMES_DATA, file))
 
         if options['no_postalcodes'] == False:
-            print '\nLooking for postalcode data to download'
-            req = urllib2.Request(url=GEONAMES_PC_DUMPS_URL)
-            postalcodeResponse = urllib2.urlopen(req)
+            print('\nLooking for postalcode data to download')
+            req = urllib.request.Request(url=GEONAMES_PC_DUMPS_URL)
+            postalcodeResponse = urllib.request.urlopen(req)
+
+            _, postalcodeResponse_params = cgi.parse_header(postalcodeResponse.headers.get('Content-Type', ''))
+            postalcodeResponse_text = postalcodeResponse.read().decode(postalcodeResponse_params['charset'])
             postalcodeFiles = re.findall(r'\<a href="(.+\.(?:txt|zip))"\>',
-                                         postalcodeResponse.read())
+                                         postalcodeResponse_text)
             for file in postalcodeFiles:
                 if file != 'allCountries.zip':
                     continue
 
-                print '\nStart download "%s" file' % file
-                download(urlparse.urljoin(GEONAMES_PC_DUMPS_URL, file),
+                print('\nStart download "%s" file' % file)
+                download(urllib.parse.urljoin(GEONAMES_PC_DUMPS_URL, file),
                          os.path.join(GEONAMES_DATA_PC, file))
 
         if options['time']:
-            print '\nCompleted in %s' % (datetime.datetime.now() - start_time)
+            print('\nCompleted in %s' % (datetime.datetime.now() - start_time))
